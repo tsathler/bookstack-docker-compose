@@ -55,7 +55,7 @@ bookstack/
 ### Passo 1: Clonar o projeto e criar o diretório de dados
 ```bash
 cd /opt
-sudo git clone <URL_DO_REPOSITORIO> bookstack
+sudo git clone https://github.com/tsathler/bookstack-docker-compose.git bookstack
 cd /opt/bookstack
 
 # Criar diretórios locais de persistência
