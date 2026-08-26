@@ -1,0 +1,41 @@
+# ==============================================================================
+# GITIGNORE - BOOKSTACK REPOSITORY
+# ==============================================================================
+
+# Arquivos de ambiente e credenciais sensíveis (NUNCA COMMITTAR!)
+.env
+.env.local
+.env.*.local
+
+# Diretórios de dados persistentes dos containers
+data/app/
+data/db/
+data/*
+!data/.gitkeep
+
+# Diretório e arquivos de backup / Disaster Recovery
+backups/*
+!backups/.gitkeep
+*.tar.gz
+*.sql
+*.sha256
+
+# Certificados SSL / TLS e Chaves Privadas
+nginx/ssl/*
+!nginx/ssl/.gitkeep
+*.key
+*.crt
+*.pem
+*.csr
+
+# Arquivos de log
+logs/
+*.log
+
+# Arquivos temporários de SO e IDEs
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo

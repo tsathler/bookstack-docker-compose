@@ -1,0 +1,22 @@
+# ==============================================================================
+# GITATTRIBUTES - NORMALIZAÇÃO DE QUEBRAS DE LINHA (LF / CRLF)
+# ==============================================================================
+# Garante que scripts e arquivos de configuração executem no Ubuntu sem erros
+# de interpretador (^M / bad interpreter / syntax error).
+
+# Comportamento padrão automático
+* text=auto
+
+# Scripts Bash e utilitários Linux SEMPRE com LF
+*.sh text eol=lf
+*.bash text eol=lf
+
+# Arquivos de configuração de infraestrutura
+*.conf text eol=lf
+*.ini text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.env.example text eol=lf
+
+# Documentação
+*.md text eol=lf

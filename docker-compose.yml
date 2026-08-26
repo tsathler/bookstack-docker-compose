@@ -1,0 +1,137 @@
+version: '3.8'
+
+# ==============================================================================
+# BOOKSTACK CORPORATE INFRASTRUCTURE - DOCKER COMPOSE
+# ==============================================================================
+# Stack em alta disponibilidade e segurança para a Base de Conhecimento de TI
+# Contém:
+#   1. bookstack_db: MariaDB 10.11 com Healthcheck ativo e Resource Limits
+#   2. bookstack_app: BookStack (LinuxServer) conectado ao MariaDB e AD/LDAP
+# ==============================================================================
+
+networks:
+  bookstack_net:
+    driver: bridge
+    name: bookstack_corporate_net
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.28.10.0/24
+
+services:
+  # ----------------------------------------------------------------------------
+  # SERVIÇO 1: BANCO DE DADOS MARIADB 10.11
+  # ----------------------------------------------------------------------------
+  bookstack_db:
+    image: mariadb:10.11
+    container_name: bookstack_db
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_DATABASE:-bookstackapp}
+      MYSQL_USER: ${DB_USER:-bookstack_user}
+      MYSQL_PASSWORD: ${DB_PASS}
+      TZ: ${TZ:-America/Sao_Paulo}
+    volumes:
+      - ./data/db:/var/lib/mysql
+    networks:
+      - bookstack_net
+    healthcheck:
+      test: ["CMD", "mariadb-admin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2048M
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  # ----------------------------------------------------------------------------
+  # SERVIÇO 2: APLICAÇÃO BOOKSTACK
+  # ----------------------------------------------------------------------------
+  bookstack:
+    image: lscr.io/linuxserver/bookstack:latest
+    container_name: bookstack_app
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      bookstack_db:
+        condition: service_healthy
+    environment:
+      # Permissões e Fuso Horário
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}
+      TZ: ${TZ:-America/Sao_Paulo}
+      APP_URL: ${APP_URL}
+
+      # Conexão com o Banco de Dados
+      DB_HOST: ${DB_HOST:-bookstack_db}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_USER: ${DB_USER:-bookstack_user}
+      DB_PASS: ${DB_PASS}
+      DB_DATABASE: ${DB_DATABASE:-bookstackapp}
+
+      # Limites de Upload e Performance
+      FILE_UPLOAD_LIMIT: ${FILE_UPLOAD_LIMIT:-100}
+
+      # Autenticação Híbrida / Active Directory (LDAP)
+      AUTH_METHOD: ${AUTH_METHOD:-ldap}
+      LDAP_SERVER: ${LDAP_SERVER}
+      LDAP_BASE_DN: ${LDAP_BASE_DN}
+      LDAP_DN: ${LDAP_DN}
+      LDAP_PASS: ${LDAP_PASS}
+      LDAP_USER_FILTER: ${LDAP_USER_FILTER:-(&(objectCategory=Person)(sAMAccountName=$${user}))}
+      LDAP_VERSION: ${LDAP_VERSION:-3}
+      LDAP_ID_ATTRIBUTE: ${LDAP_ID_ATTRIBUTE:-sAMAccountName}
+      LDAP_EMAIL_ATTRIBUTE: ${LDAP_EMAIL_ATTRIBUTE:-mail}
+      LDAP_DISPLAY_NAME_ATTRIBUTE: ${LDAP_DISPLAY_NAME_ATTRIBUTE:-displayName}
+      LDAP_USER_TO_GROUPS: ${LDAP_USER_TO_GROUPS:-true}
+      LDAP_GROUP_ATTRIBUTE: ${LDAP_GROUP_ATTRIBUTE:-memberOf}
+      LDAP_REMOVE_FROM_GROUPS: ${LDAP_REMOVE_FROM_GROUPS:-false}
+      LDAP_TLS_INSECURE: ${LDAP_TLS_INSECURE:-false}
+
+      # Notificações por E-mail (SMTP Corporativo)
+      MAIL_MAILER: ${MAIL_MAILER:-smtp}
+      MAIL_HOST: ${MAIL_HOST}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
+      MAIL_ENCRYPTION: ${MAIL_ENCRYPTION:-tls}
+      MAIL_FROM: ${MAIL_FROM}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-BookStack TI}
+    volumes:
+      # Armazenamento persistente de uploads, anexos, avatares e configurações
+      - ./data/app:/config
+      # Sobrescrita de configurações customizadas do PHP (Upload 100M e OPcache)
+      - ./custom-php/php-custom.ini:/config/php/php-local.ini:ro
+    ports:
+      # Exposição apenas na interface de Loopback (127.0.0.1) para consumo seguro via NGINX Reverse Proxy
+      - "127.0.0.1:${BOOKSTACK_BIND_PORT:-6875}:80"
+    networks:
+      - bookstack_net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2048M
+        reservations:
+          cpus: '0.5'
+          memory: 512M
