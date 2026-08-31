@@ -1,15 +1,19 @@
 from __future__ import annotations
 
 import html
+import hmac
 import logging
 import re
 import secrets
 import sqlite3
+import time
+from hashlib import sha256
 from contextlib import closing
 from pathlib import Path
 
 from bs4 import BeautifulSoup
-from fastapi import Depends, FastAPI, Header, HTTPException, status
+from fastapi import Cookie, Depends, FastAPI, Header, HTTPException, Response, status
+from fastapi.responses import HTMLResponse
 import httpx
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -41,6 +45,10 @@ class ChatRequest(BaseModel):
     question: str = Field(min_length=3, max_length=2000)
 
 
+class SessionRequest(BaseModel):
+    token: str = Field(min_length=1, max_length=256)
+
+
 class Citation(BaseModel):
     page_id: int
     title: str
@@ -61,6 +69,33 @@ def database_path() -> Path:
 def require_access_token(x_chatbot_token: str | None = Header(default=None)) -> None:
     if not x_chatbot_token or not secrets.compare_digest(x_chatbot_token, settings.chatbot_access_token):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid chatbot token")
+
+
+def session_value() -> str:
+    issued = str(int(time.time()))
+    signature = hmac.new(settings.chatbot_access_token.encode(), issued.encode(), sha256).hexdigest()
+    return f"{issued}.{signature}"
+
+
+def valid_session(cookie: str | None) -> bool:
+    if not cookie or "." not in cookie:
+        return False
+    issued, signature = cookie.split(".", 1)
+    if not issued.isdigit() or time.time() - int(issued) > 8 * 60 * 60:
+        return False
+    expected = hmac.new(settings.chatbot_access_token.encode(), issued.encode(), sha256).hexdigest()
+    return hmac.compare_digest(signature, expected)
+
+
+def require_session_or_api_token(
+    x_chatbot_token: str | None = Header(default=None),
+    chatbot_session: str | None = Cookie(default=None),
+) -> None:
+    if x_chatbot_token and secrets.compare_digest(x_chatbot_token, settings.chatbot_access_token):
+        return
+    if valid_session(chatbot_session):
+        return
+    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required")
 
 
 def initialize_database() -> None:
@@ -160,7 +195,46 @@ async def health() -> dict:
     return {"status": "ok", "indexed_documents": count}
 
 
-@app.post("/chat", response_model=ChatResponse, dependencies=[Depends(require_access_token)])
+@app.get("/", response_class=HTMLResponse, include_in_schema=False)
+async def interface() -> str:
+    return """<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Assistente IA - BookStack</title>
+<style>
+:root{color-scheme:light;--blue:#2563eb;--ink:#172033;--muted:#64748b;--panel:#fff;--bg:#f1f5f9}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px system-ui,-apple-system,Segoe UI,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:28px 18px}.card{background:var(--panel);border:1px solid #dbe3ef;border-radius:14px;box-shadow:0 8px 24px #0f172a12}
+header{padding:22px 24px;border-bottom:1px solid #e2e8f0}h1{margin:0 0 6px;font-size:1.45rem}p{margin:0;color:var(--muted)}
+#messages{min-height:360px;max-height:58vh;overflow:auto;padding:20px}.msg{margin:12px 0;padding:14px 16px;border-radius:10px;white-space:pre-wrap;line-height:1.5}.user{background:#dbeafe;margin-left:15%}.assistant{background:#f8fafc;margin-right:10%}.source{display:block;margin-top:9px;color:var(--blue);font-size:.9rem;text-decoration:none}
+form.ask{display:flex;gap:10px;padding:18px;border-top:1px solid #e2e8f0}textarea{resize:vertical;min-height:52px;flex:1;padding:12px;border:1px solid #cbd5e1;border-radius:9px;font:inherit}button{border:0;border-radius:9px;background:var(--blue);color:#fff;padding:0 18px;font:inherit;font-weight:600;cursor:pointer}button:disabled{opacity:.55;cursor:wait}
+#login{position:fixed;inset:0;display:grid;place-items:center;background:#0f172acc;padding:20px}.login-card{max-width:420px;width:100%;padding:24px}.login-card h2{margin-top:0}.login-card input{width:100%;padding:12px;margin:12px 0;border:1px solid #cbd5e1;border-radius:8px;font:inherit}.login-card button{height:44px;width:100%}.error{color:#b91c1c;margin-top:10px;min-height:1.2em}
+</style></head><body><main class="wrap"><section class="card"><header><h1>Assistente IA</h1><p>Consulte a documentação autorizada do BookStack.</p></header><div id="messages"><div class="msg assistant">Olá! Faça uma pergunta sobre os procedimentos de TI.</div></div><form class="ask" id="ask"><textarea id="question" maxlength="2000" required placeholder="Ex.: Como executar o rollback?"></textarea><button id="send">Enviar</button></form></section></main>
+<section id="login"><form class="card login-card" id="login-form"><h2>Acesso ao assistente</h2><p>Informe o token de acesso fornecido pela administração.</p><input id="token" type="password" autocomplete="current-password" required><button>Entrar</button><div class="error" id="login-error"></div></form></section>
+<script>
+const login=document.querySelector('#login'), loginForm=document.querySelector('#login-form'), loginError=document.querySelector('#login-error');
+const messages=document.querySelector('#messages'), ask=document.querySelector('#ask'), question=document.querySelector('#question'), send=document.querySelector('#send');
+async function check(){const r=await fetch('health'); if(r.ok){const c=await fetch('chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:'__health__'})}); if(c.status!==401) login.hidden=true;}}
+loginForm.addEventListener('submit',async e=>{e.preventDefault();loginError.textContent='';const r=await fetch('session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:document.querySelector('#token').value})});if(r.ok){login.hidden=true;document.querySelector('#token').value=''}else loginError.textContent='Token inválido.'});
+ask.addEventListener('submit',async e=>{e.preventDefault();const q=question.value.trim();if(!q)return; add(q,'user');question.value='';send.disabled=true;try{const r=await fetch('chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:q})});if(r.status===401){login.hidden=false;throw new Error('Sessão expirada.')}const d=await r.json();if(!r.ok)throw new Error(d.detail||'Falha ao consultar o assistente');add(d.answer+'\n\nFontes:', 'assistant', d.citations)}catch(err){add(err.message,'assistant')}finally{send.disabled=false;question.focus()}});
+function add(text,who,sources=[]){const el=document.createElement('div');el.className='msg '+who;el.textContent=text;if(sources?.length){sources.forEach(s=>{const a=document.createElement('a');a.className='source';a.href=s.url;a.target='_blank';a.rel='noopener';a.textContent='↗ '+s.title;el.appendChild(a)})}messages.appendChild(el);messages.scrollTop=messages.scrollHeight}check();
+</script></body></html>"""
+
+
+@app.post("/session", include_in_schema=False)
+async def create_session(request: SessionRequest, response: Response) -> dict:
+    if not secrets.compare_digest(request.token, settings.chatbot_access_token):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid chatbot token")
+    response.set_cookie("chatbot_session", session_value(), httponly=True, secure=True, samesite="lax", max_age=8 * 60 * 60)
+    return {"status": "authenticated"}
+
+
+@app.post("/logout", include_in_schema=False)
+async def logout(response: Response) -> dict:
+    response.delete_cookie("chatbot_session")
+    return {"status": "logged_out"}
+
+
+@app.post("/chat", response_model=ChatResponse, dependencies=[Depends(require_session_or_api_token)])
 async def chat(request: ChatRequest) -> ChatResponse:
     question = request.question.strip()
     if len(question) > settings.max_question_chars:

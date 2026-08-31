@@ -2,7 +2,7 @@
 
 ## Objetivo
 
-Este módulo adiciona um gateway interno de perguntas e respostas sobre as páginas
+Este módulo adiciona uma interface web e um gateway interno de perguntas e respostas sobre as páginas
 do BookStack. O modelo é acessado pela Gemini API hospedada; o servidor
 local não precisa de GPU e não aceita conexões diretas do chatbot pela internet.
 
@@ -114,13 +114,13 @@ curl -sS http://127.0.0.1:8000/chat \
   -d '{"question":"Como executar o rollback deste serviço?"}'
 ```
 
-Externamente, o caminho é `/assistente/chat` através do HTTPS do NGINX. A chave
+Externamente, a interface fica em `/assistente/` e a API em `/assistente/chat` através do HTTPS do NGINX. A chave
 Gemini nunca deve ser enviada pelo cliente.
 
 ## Controles de segurança implementados
 
 - Gemini é chamado somente pelo backend; a chave não aparece no navegador.
-- O gateway exige `X-Chatbot-Token` com comparação em tempo constante.
+- A interface cria uma sessão `HttpOnly`, `Secure` e `SameSite=Lax`; a API também aceita `X-Chatbot-Token` para integrações técnicas.
 - Limite de 2.000 caracteres por pergunta e 32 KB no NGINX.
 - Resposta limitada a 1.200 tokens e timeout de 30 segundos na API.
 - Prompt instrui o modelo a usar apenas o contexto e ignorar instruções presentes
@@ -147,10 +147,11 @@ documentos restritos sem autorização.
 
 ### Identidade e ACL
 
-O token do chatbot é um token de aplicação, não uma identidade individual. O MVP
-não consegue aplicar permissões diferentes por usuário final. Por isso, use
-somente um conjunto de documentos com a mesma classificação de acesso. A próxima
-evolução deve integrar SSO/LDAP no gateway e manter ACL por grupo no índice.
+O login atual usa um token de aplicação convertido em sessão HTTPOnly; ele não é
+uma identidade individual. O MVP não consegue aplicar permissões diferentes por
+usuário final. Por isso, use somente um conjunto de documentos com a mesma
+classificação de acesso. A próxima evolução deve integrar SSO/LDAP/OIDC no
+gateway e manter ACL por grupo no índice.
 
 ### Confiabilidade da API gratuita
 
