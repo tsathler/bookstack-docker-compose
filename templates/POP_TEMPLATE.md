@@ -132,7 +132,7 @@ Para considerar o procedimento concluído com êxito, todos os itens abaixo DEVE
 - [ ] Todos os containers estão com status `healthy` (`docker compose ps`).
 - [ ] O endpoint de healthcheck HTTP responde com status code `200 OK`:
   ```bash
-  curl -k -s -o /dev/null -w "%{http_code}\n" https://docs.empresa.com.br/status
+  curl -k -s -o /dev/null -w "%{http_code}\n" https://docs.empresa.com.br/
   ```
 - [ ] Login de usuário via Active Directory autentica sem atrasos.
 - [ ] Criação de página de teste e upload de anexo executados com sucesso.

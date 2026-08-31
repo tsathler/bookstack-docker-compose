@@ -124,8 +124,8 @@ else
     log_warn "Diretório '${APP_DATA_DIR}' não encontrado. Apenas o banco foi arquivado."
 fi
 
-# Copiar arquivo .env (sem senhas descriptografadas no log)
-cp "${ENV_FILE}" "${BACKUP_TARGET_DIR}/env_backup_${TIMESTAMP}.env"
+# O .env contém credenciais e não é incluído no pacote. A restauração deve usar
+# o .env já protegido do ambiente de destino.
 
 # Criar manifesto do backup
 cat <<EOF > "${BACKUP_TARGET_DIR}/manifest.json"
@@ -134,6 +134,7 @@ cat <<EOF > "${BACKUP_TARGET_DIR}/manifest.json"
   "timestamp": "${TIMESTAMP}",
   "bookstack_version": "$(docker exec bookstack_app php /app/www/artisan --version 2>/dev/null || echo 'unknown')",
   "database_name": "${DB_NAME}",
+  "environment_file_included": false,
   "created_at": "$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
 }
 EOF

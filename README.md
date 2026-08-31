@@ -1,6 +1,6 @@
 # 📚 BookStack Corporativo - Base de Conhecimento e Documentação Técnica de TI
 
-Solução corporativa para implantação do **BookStack** em ambiente de produção de alta disponibilidade, com persistência completa, autenticação híbrida via Active Directory / OpenLDAP, terminação SSL com NGINX, rotina de Disaster Recovery automatizada e templates operacionais (POPs/SOPs).
+Solução corporativa para implantação do **BookStack** em uma instância Docker persistente, com autenticação híbrida via Active Directory / OpenLDAP, terminação SSL com NGINX, rotina de Disaster Recovery automatizada e templates operacionais (POPs/SOPs). Alta disponibilidade exige componentes externos adicionais, como banco redundante, armazenamento compartilhado e balanceamento.
 
 ---
 
@@ -9,7 +9,7 @@ Solução corporativa para implantação do **BookStack** em ambiente de produç
 ```mermaid
 graph TD
     Client([Navegador / Usuários de TI]) -->|HTTPS:443| Nginx[NGINX Reverse Proxy\nSSL Hardened + 100MB Upload]
-    Nginx -->|HTTP:6875| App[BookStack App Container\nlscr.io/linuxserver/bookstack:latest]
+    Nginx -->|HTTP:6875| App[BookStack App Container\nimagem definida em BOOKSTACK_IMAGE]
     App -->|Port 3306| DB[(MariaDB 10.11 Container\nHealthcheck + Resource Limits)]
     App -->|LDAPS:636| AD[Active Directory Corporativo\nsAMAccountName + memberOf]
     App -->|SMTP TLS:587| Mail[Servidor SMTP Corporativo]
@@ -32,6 +32,9 @@ bookstack/
 ├── scripts/
 │   ├── backup_bookstack.sh        # Automação de backup (MariaDB + Uploads + SHA256)
 │   └── restore_bookstack.sh       # Script guiado de restauração e Disaster Recovery
+├── ai-service/                    # Gateway interno de IA e indexação do BookStack
+├── docs/
+│   └── AI_ASSISTANT.md            # Instalação, segurança e operação do assistente NIM
 ├── templates/
 │   └── POP_TEMPLATE.md            # Modelo padronizado corporativo para artigos e POPs
 ├── OPERATIONAL_GUIDE.md           # Guia de pós-instalação, AD Group Mapping e Upgrades
@@ -71,7 +74,7 @@ cp .env.example .env
 chmod 600 .env
 nano .env
 ```
-> **Atenção:** Configure senhas fortes para `DB_PASS` e `MYSQL_ROOT_PASSWORD`, além de ajustar `APP_URL` com seu domínio HTTPS real.
+> **Atenção:** Configure senhas fortes para `DB_PASS` e `MYSQL_ROOT_PASSWORD`, ajuste `APP_URL` com seu domínio HTTPS real e defina `BOOKSTACK_IMAGE` com uma tag ou digest aprovado. Nunca versione o `.env`.
 
 ---
 
@@ -96,6 +99,8 @@ docker compose logs -f
 ---
 
 ### Passo 5: Configurar o NGINX com SSL
+Antes de ativar o site, instale `bookstack.crt` e `bookstack.key` em `/etc/nginx/ssl/` no host, proteja a chave privada (`chmod 600`) e ajuste `server_name` para os domínios reais.
+
 1. Copie o arquivo de configuração para o NGINX do host:
    ```bash
    sudo cp nginx/bookstack.conf /etc/nginx/sites-available/bookstack.conf
@@ -112,10 +117,10 @@ docker compose logs -f
 ## 🔐 4. Primeiro Acesso e Mapeamento de Funções
 
 1. Acesse no navegador: `https://docs.empresa.com.br`
-2. **Primeiro login com credencial local padrão:**
+2. **Primeiro login com credencial local inicial:**
    - **E-mail:** `admin@admin.com`
    - **Senha:** `password`
-   *(Altere imediatamente a senha nas configurações do usuário!)*
+   *(Altere imediatamente a senha nas configurações do usuário e valide o comportamento da versão instalada.)*
 3. Siga as instruções do [Guia Operacional](OPERATIONAL_GUIDE.md) para:
    - Configurar o mapeamento dos grupos do Active Directory (`GG_TI_Admins`, `GG_TI_N2`, etc.).
    - Ativar o agendamento de backup diário no Cron.
@@ -133,3 +138,5 @@ Todos os artigos de procedimentos operacionais e base de conhecimento N1/N2/N3 d
 ## 🛡️ 6. Suporte e Manutenção
 
 Para procedimentos de upgrade, restauração de emergência e resolução de problemas técnicos, consulte o arquivo [`OPERATIONAL_GUIDE.md`](OPERATIONAL_GUIDE.md).
+
+O assistente de IA com NVIDIA NIM é opcional e está documentado em [`docs/AI_ASSISTANT.md`](docs/AI_ASSISTANT.md). Ele não é iniciado por padrão e só fica acessível pelo NGINX, sem publicar uma porta de chatbot na internet.

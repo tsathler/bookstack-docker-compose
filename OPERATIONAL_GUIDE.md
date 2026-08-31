@@ -98,16 +98,16 @@ O BookStack e o MariaDB devem ser atualizados regularmente para recebimento de p
    ```
    > Confirme se o arquivo `.tar.gz` e `.sha256` foram gerados com sucesso antes de prosseguir!
 
-3. **Baixe as versões mais recentes das imagens Docker:**
+3. **Baixe as imagens aprovadas definidas no ambiente:**
    ```bash
-   docker compose pull
+   docker compose pull bookstack_db bookstack
    ```
 
 4. **Recrie os containers com as novas imagens:**
    ```bash
    docker compose up -d
    ```
-   > O container da LinuxServer executa automaticamente as migrações de banco de dados (`php artisan migrate`) na inicialização.
+   > Valide a versão da imagem e tenha um backup íntegro antes de aplicar a mudança. O container executa a inicialização e as migrações necessárias conforme a versão suportada.
 
 5. **Acompanhe os logs da inicialização:**
    ```bash

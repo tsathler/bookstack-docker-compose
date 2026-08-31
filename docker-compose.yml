@@ -1,9 +1,7 @@
-version: '3.8'
-
 # ==============================================================================
 # BOOKSTACK CORPORATE INFRASTRUCTURE - DOCKER COMPOSE
 # ==============================================================================
-# Stack em alta disponibilidade e segurança para a Base de Conhecimento de TI
+# Stack de instância única para a Base de Conhecimento de TI
 # Contém:
 #   1. bookstack_db: MariaDB 10.11 com Healthcheck ativo e Resource Limits
 #   2. bookstack_app: BookStack (LinuxServer) conectado ao MariaDB e AD/LDAP
@@ -62,7 +60,7 @@ services:
   # SERVIÇO 2: APLICAÇÃO BOOKSTACK
   # ----------------------------------------------------------------------------
   bookstack:
-    image: lscr.io/linuxserver/bookstack:latest
+    image: ${BOOKSTACK_IMAGE:?Defina BOOKSTACK_IMAGE no arquivo .env}
     container_name: bookstack_app
     restart: unless-stopped
     security_opt:
@@ -80,8 +78,8 @@ services:
       # Conexão com o Banco de Dados
       DB_HOST: ${DB_HOST:-bookstack_db}
       DB_PORT: ${DB_PORT:-3306}
-      DB_USER: ${DB_USER:-bookstack_user}
-      DB_PASS: ${DB_PASS}
+      DB_USERNAME: ${DB_USER:-bookstack_user}
+      DB_PASSWORD: ${DB_PASS}
       DB_DATABASE: ${DB_DATABASE:-bookstackapp}
 
       # Limites de Upload e Performance
@@ -112,6 +110,7 @@ services:
       MAIL_ENCRYPTION: ${MAIL_ENCRYPTION:-tls}
       MAIL_FROM: ${MAIL_FROM}
       MAIL_FROM_NAME: ${MAIL_FROM_NAME:-BookStack TI}
+      UMASK: ${UMASK:-027}
     volumes:
       # Armazenamento persistente de uploads, anexos, avatares e configurações
       - ./data/app:/config
@@ -120,6 +119,12 @@ services:
     ports:
       # Exposição apenas na interface de Loopback (127.0.0.1) para consumo seguro via NGINX Reverse Proxy
       - "127.0.0.1:${BOOKSTACK_BIND_PORT:-6875}:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
     networks:
       - bookstack_net
     logging:
@@ -135,3 +140,47 @@ services:
         reservations:
           cpus: '0.5'
           memory: 512M
+
+  # --------------------------------------------------------------------------
+  # SERVIÇO 3: GATEWAY DE IA (ACESSÍVEL SOMENTE PELO NGINX NO HOST)
+  # --------------------------------------------------------------------------
+  ai_service:
+    profiles: ["ai"]
+    build:
+      context: ./ai-service
+    container_name: bookstack_ai
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+    depends_on:
+      bookstack:
+        condition: service_healthy
+    environment:
+      AI_BASE_URL: ${AI_BASE_URL:-https://integrate.api.nvidia.com/v1}
+      AI_MODEL: ${AI_MODEL:?Defina AI_MODEL no arquivo .env}
+      NVIDIA_API_KEY: ${NVIDIA_API_KEY:?Defina NVIDIA_API_KEY no arquivo .env}
+      BOOKSTACK_URL: ${BOOKSTACK_INTERNAL_URL:-http://bookstack}
+      BOOKSTACK_API_TOKEN_ID: ${BOOKSTACK_API_TOKEN_ID:?Defina BOOKSTACK_API_TOKEN_ID no arquivo .env}
+      BOOKSTACK_API_TOKEN_SECRET: ${BOOKSTACK_API_TOKEN_SECRET:?Defina BOOKSTACK_API_TOKEN_SECRET no arquivo .env}
+      CHATBOT_ACCESS_TOKEN: ${CHATBOT_ACCESS_TOKEN:?Defina CHATBOT_ACCESS_TOKEN no arquivo .env}
+      DATA_DIR: /data
+    volumes:
+      - ./data/ai:/data
+    ports:
+      - "127.0.0.1:${CHATBOT_BIND_PORT:-8000}:8000"
+    networks:
+      - bookstack_net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
