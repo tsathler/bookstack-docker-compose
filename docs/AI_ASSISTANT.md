@@ -1,14 +1,14 @@
-# Assistente de IA do BookStack com NVIDIA NIM
+# Assistente de IA do BookStack com Gemini API
 
 ## Objetivo
 
 Este módulo adiciona um gateway interno de perguntas e respostas sobre as páginas
-do BookStack. O modelo é acessado pela API hospedada do NVIDIA NIM; o servidor
+do BookStack. O modelo é acessado pela Gemini API hospedada; o servidor
 local não precisa de GPU e não aceita conexões diretas do chatbot pela internet.
 
 O MVP usa recuperação lexical com SQLite FTS5. Isso reduz dependências, evita
 publicar um banco vetorial e permite validar segurança e qualidade antes de
-introduzir embeddings. O conteúdo recuperado é enviado ao NIM somente durante
+introduzir embeddings. O conteúdo recuperado é enviado ao Google somente durante
 uma pergunta.
 
 ## Arquitetura e exposição de rede
@@ -16,7 +16,7 @@ uma pergunta.
 ```text
 Cliente -> NGINX:443 -> 127.0.0.1:8000 -> ai_service:8000
                                       -> bookstack:80 (rede Docker)
-                                      -> api.nvidia.com:443 (saída HTTPS)
+                                      -> generativelanguage.googleapis.com:443 (saída HTTPS)
 
 MariaDB:3306 e SQLite da IA: somente locais/internos
 ```
@@ -36,7 +36,7 @@ troque por `0.0.0.0`.
 ## Pré-requisitos
 
 1. BookStack em execução e acessível na rede Docker.
-2. Conta no catálogo NVIDIA e uma chave de API NIM para desenvolvimento.
+2. Conta Google AI Studio e uma chave da Gemini API.
 3. Um usuário técnico do BookStack com somente leitura e permissão de acesso à API.
 4. Docker Compose com capacidade de fazer build local.
 
@@ -53,8 +53,8 @@ openssl rand -hex 32
 Preencha no `.env`:
 
 ```env
-AI_MODEL=identificador_exato_do_modelo_no_catalogo
-NVIDIA_API_KEY=nvapi-...
+GEMINI_MODEL=identificador_exato_do_modelo_no_Google_AI_Studio
+GEMINI_API_KEY=AIza...
 BOOKSTACK_API_TOKEN_ID=...
 BOOKSTACK_API_TOKEN_SECRET=...
 CHATBOT_ACCESS_TOKEN=valor_gerado_com_openssl
@@ -115,11 +115,11 @@ curl -sS http://127.0.0.1:8000/chat \
 ```
 
 Externamente, o caminho é `/assistente/chat` através do HTTPS do NGINX. A chave
-NVIDIA nunca deve ser enviada pelo cliente.
+Gemini nunca deve ser enviada pelo cliente.
 
 ## Controles de segurança implementados
 
-- NIM é chamado somente pelo backend; a chave não aparece no navegador.
+- Gemini é chamado somente pelo backend; a chave não aparece no navegador.
 - O gateway exige `X-Chatbot-Token` com comparação em tempo constante.
 - Limite de 2.000 caracteres por pergunta e 32 KB no NGINX.
 - Resposta limitada a 1.200 tokens e timeout de 30 segundos na API.
@@ -138,9 +138,9 @@ NVIDIA nunca deve ser enviada pelo cliente.
 
 ## Limitações e decisões conscientes
 
-### Dados enviados ao NIM
+### Dados enviados à Gemini API
 
-Os trechos recuperados das páginas são enviados para a API externa da NVIDIA.
+Os trechos recuperados das páginas são enviados para a API externa do Google.
 Isso é adequado somente após aprovação da política corporativa de dados e dos
 termos aplicáveis. Não indexe segredos, senhas, chaves, dados pessoais ou
 documentos restritos sem autorização.
@@ -160,7 +160,7 @@ Não use o endpoint gratuito como único componente de um processo crítico.
 
 ## Operação e resposta a incidentes
 
-- Revogue e substitua `NVIDIA_API_KEY`, tokens BookStack e
+- Revogue e substitua `GEMINI_API_KEY`, tokens BookStack e
   `CHATBOT_ACCESS_TOKEN` imediatamente após suspeita de exposição.
 - Verifique `docker compose logs --tail=100 ai_service` sem registrar prompts.
 - Reindexe após revogar documentos ou alterar a role técnica.

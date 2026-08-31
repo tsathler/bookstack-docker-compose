@@ -159,9 +159,9 @@ services:
       bookstack:
         condition: service_healthy
     environment:
-      AI_BASE_URL: ${AI_BASE_URL:-https://integrate.api.nvidia.com/v1}
-      AI_MODEL: ${AI_MODEL:?Defina AI_MODEL no arquivo .env}
-      NVIDIA_API_KEY: ${NVIDIA_API_KEY:?Defina NVIDIA_API_KEY no arquivo .env}
+      GEMINI_BASE_URL: ${GEMINI_BASE_URL:-https://generativelanguage.googleapis.com/v1beta}
+      GEMINI_MODEL: ${GEMINI_MODEL:?Defina GEMINI_MODEL no arquivo .env}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:?Defina GEMINI_API_KEY no arquivo .env}
       BOOKSTACK_URL: ${BOOKSTACK_INTERNAL_URL:-http://bookstack}
       BOOKSTACK_API_TOKEN_ID: ${BOOKSTACK_API_TOKEN_ID:?Defina BOOKSTACK_API_TOKEN_ID no arquivo .env}
       BOOKSTACK_API_TOKEN_SECRET: ${BOOKSTACK_API_TOKEN_SECRET:?Defina BOOKSTACK_API_TOKEN_SECRET no arquivo .env}
