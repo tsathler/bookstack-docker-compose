@@ -32,9 +32,7 @@ bookstack/
 ├── scripts/
 │   ├── backup_bookstack.sh        # Automação de backup (MariaDB + Uploads + SHA256)
 │   └── restore_bookstack.sh       # Script guiado de restauração e Disaster Recovery
-├── ai-service/                    # Gateway interno de IA e indexação do BookStack
 ├── docs/
-│   └── AI_ASSISTANT.md            # Instalação, segurança e operação do assistente Gemini
 ├── templates/
 │   └── POP_TEMPLATE.md            # Modelo padronizado corporativo para artigos e POPs
 ├── OPERATIONAL_GUIDE.md           # Guia de pós-instalação, AD Group Mapping e Upgrades
@@ -139,4 +137,4 @@ Todos os artigos de procedimentos operacionais e base de conhecimento N1/N2/N3 d
 
 Para procedimentos de upgrade, restauração de emergência e resolução de problemas técnicos, consulte o arquivo [`OPERATIONAL_GUIDE.md`](OPERATIONAL_GUIDE.md).
 
-O assistente de IA com Gemini API é opcional e está documentado em [`docs/AI_ASSISTANT.md`](docs/AI_ASSISTANT.md). Ele não é iniciado por padrão e só fica acessível pelo NGINX, sem publicar uma porta de chatbot na internet.
+O projeto mantém somente o BookStack, MariaDB e o proxy NGINX. A camada de IA foi removida para evitar dependências externas e o envio de conteúdo corporativo a provedores de modelos.
