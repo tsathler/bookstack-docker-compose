@@ -1,4 +1,6 @@
-# 📚 BookStack Corporativo - Base de Conhecimento e Documentação Técnica de TI
+# BookStack Docker Compose — Corporate Knowledge Base
+
+**Languages:** [English](#english) · [Português](#português)
 
 ## English
 
@@ -49,6 +51,8 @@ Configure the host Nginx virtual host and TLS certificates according to your env
 
 ## Português
 
+[↑ English](#english)
+
 **Infraestrutura de base de conhecimento auto-hospedada, com autenticação corporativa e rotinas de recuperação.**
 
 A proposta reúne **BookStack, MariaDB, Docker Compose, Nginx, integração LDAP e scripts de backup/restauração** em uma configuração documentada para administração de sistemas.
@@ -65,7 +69,7 @@ A proposta reúne **BookStack, MariaDB, Docker Compose, Nginx, integração LDAP
 
 > **Escopo:** solução de instância única. Os scripts e a documentação de recuperação não equivalem, por si só, a alta disponibilidade ou a um teste completo de disaster recovery em produção. Nunca versione o arquivo `.env` nem credenciais.
 
-**[Instalação](#-3-guia-de-inicialização-rápida-quickstart) · [Guia operacional](OPERATIONAL_GUIDE.md) · [Template POP/SOP](templates/POP_TEMPLATE.md)**
+**[Operational guide](OPERATIONAL_GUIDE.md) · [POP/SOP template](templates/POP_TEMPLATE.md)**
 
 ---
 
