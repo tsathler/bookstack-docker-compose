@@ -1,5 +1,54 @@
 # 📚 BookStack Corporativo - Base de Conhecimento e Documentação Técnica de TI
 
+## English
+
+**Self-hosted BookStack knowledge base with Docker Compose, Nginx HTTPS, directory authentication and documented backup/recovery workflows.**
+
+### Components
+
+| Component | Role |
+| --- | --- |
+| BookStack and MariaDB 10.11 | Knowledge base and persistent database |
+| Nginx | HTTPS reverse proxy and upload controls |
+| Active Directory / OpenLDAP | Corporate directory authentication |
+| Backup and restore scripts | Database and file backups, restoration procedures |
+| POP/SOP templates | Standardized operating documentation |
+
+This is a **single-instance** deployment design, not a high-availability cluster. Backup scripts alone do not prove disaster-recovery readiness in a production environment.
+
+### Architecture
+
+```text
+Users → HTTPS / Nginx → BookStack → MariaDB
+                           ├── AD / LDAP
+                           └── SMTP
+Scheduled backup → database dump + files → local/NFS storage
+```
+
+### Quick start
+
+Use a compatible Linux host, Docker Engine, Docker Compose and an HTTPS reverse proxy. Ensure access to your LDAP/AD and SMTP services when using those integrations.
+
+```sh
+git clone https://github.com/tsathler/bookstack-docker-compose.git
+cd bookstack-docker-compose
+mkdir -p data/app data/db backups
+cp .env.example .env
+chmod 600 .env
+# Edit .env with environment-specific credentials and image reference
+chmod +x scripts/backup_bookstack.sh scripts/restore_bookstack.sh
+docker compose up -d
+docker compose ps
+```
+
+Configure the host Nginx virtual host and TLS certificates according to your environment. Never commit `.env`, certificates or secrets. Immediately replace any installation default account credentials and validate the installed release's initial-login procedure.
+
+**Operations:** [Operational guide](OPERATIONAL_GUIDE.md) · [POP/SOP template](templates/POP_TEMPLATE.md).
+
+---
+
+## Português
+
 **Infraestrutura de base de conhecimento auto-hospedada, com autenticação corporativa e rotinas de recuperação.**
 
 A proposta reúne **BookStack, MariaDB, Docker Compose, Nginx, integração LDAP e scripts de backup/restauração** em uma configuração documentada para administração de sistemas.
