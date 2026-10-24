@@ -1,5 +1,25 @@
 # 📚 BookStack Corporativo - Base de Conhecimento e Documentação Técnica de TI
 
+**Infraestrutura de base de conhecimento auto-hospedada, com autenticação corporativa e rotinas de recuperação.**
+
+A proposta reúne **BookStack, MariaDB, Docker Compose, Nginx, integração LDAP e scripts de backup/restauração** em uma configuração documentada para administração de sistemas.
+
+## Visão rápida
+
+| Componente | Finalidade |
+| --- | --- |
+| BookStack + MariaDB | Aplicação e persistência de dados |
+| Nginx | Reverse proxy HTTPS |
+| AD / OpenLDAP | Integração com diretório corporativo |
+| Backup e restauração | Rotinas operacionais e recuperação |
+| Templates POP/SOP | Padronização da documentação técnica |
+
+> **Escopo:** solução de instância única. Os scripts e a documentação de recuperação não equivalem, por si só, a alta disponibilidade ou a um teste completo de disaster recovery em produção. Nunca versione o arquivo `.env` nem credenciais.
+
+**[Instalação](#-3-guia-de-inicialização-rápida-quickstart) · [Guia operacional](OPERATIONAL_GUIDE.md) · [Template POP/SOP](templates/POP_TEMPLATE.md)**
+
+---
+
 Solução corporativa para implantação do **BookStack** em uma instância Docker persistente, com autenticação híbrida via Active Directory / OpenLDAP, terminação SSL com NGINX, rotina de Disaster Recovery automatizada e templates operacionais (POPs/SOPs). Alta disponibilidade exige componentes externos adicionais, como banco redundante, armazenamento compartilhado e balanceamento.
 
 ---
